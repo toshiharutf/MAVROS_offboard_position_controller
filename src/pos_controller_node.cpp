@@ -125,12 +125,26 @@ void odom_cb(const nav_msgs::Odometry::ConstPtr & msg){
   double roll, pitch, yaw;
   tf2::Matrix3x3(quat).getRPY(roll, pitch, yaw);
 
+  // Rotate to body frame
+
+  float yaw_fix;
+  yaw_fix = yaw;
+  while(yaw_fix<0){
+    yaw_fix +=2*CONSTANT_PI;
+  }
+  while(yaw_fix>2*CONSTANT_PI){
+    yaw_fix -=2*CONSTANT_PI;
+  }
+
+  speed_target_vector.setX(speed_target_vector.getX()*cos(-yaw_fix)*1.0 - speed_target_vector.getY()*sin(-yaw_fix)*1.0);
+  speed_target_vector.setY(speed_target_vector.getX()*sin(-yaw_fix)*1.0 + speed_target_vector.getY()*cos(-yaw_fix)*1.0);
+
   current_waypoint.position[0] = msg->pose.pose.position.x;
   current_waypoint.position[1] = msg->pose.pose.position.y;
   current_waypoint.position[2] = msg->pose.pose.position.z;
   current_waypoint.yaw = yaw;
 
-  ROS_DEBUG("Position: %f, %f, %f", msg->pose.pose.position.x, msg->pose.pose.position.y, msg->pose.pose.position.z);
+  ROS_INFO("Position: %f, %f, %f", msg->pose.pose.position.x, msg->pose.pose.position.y, msg->pose.pose.position.z);
   ROS_DEBUG("Orientation: %f, %f, %f", roll, pitch, yaw);
 
 }
@@ -175,15 +189,15 @@ int main(int argc, char **argv)
   waypoint_list[0].position[2] = 10;
   waypoint_list[0].yaw = 0;
 
-  waypoint_list[1].position[0] = 10;
+  waypoint_list[1].position[0] = 5;
   waypoint_list[1].position[1] = 10;
   waypoint_list[1].position[2] = 20;
-  waypoint_list[1].yaw = CONSTANT_PI/4;
+  waypoint_list[1].yaw = -CONSTANT_PI/4;
 
-  waypoint_list[2].position[0] = -20;
+  waypoint_list[2].position[0] = -10;
   waypoint_list[2].position[1] = -20;
   waypoint_list[2].position[2] = 5;
-  waypoint_list[2].yaw = -CONSTANT_PI/4;
+  waypoint_list[2].yaw = CONSTANT_PI/4;
 
   // Load first waypoint
   target_waypoint = waypoint_list[waypoint_index];
@@ -232,13 +246,11 @@ int main(int argc, char **argv)
       if(hasWaypointBeenReached(current_waypoint, target_waypoint)){
         ROS_INFO("Waypoint %d reached!", waypoint_index);
         waypoint_index++;
-        if(waypoint_index < NUMBER_OF_WAYPOINTS){
-          ROS_INFO("Navigation to Waypoint %d", waypoint_index);
-        }
-        else{
+        if(waypoint_index >= NUMBER_OF_WAYPOINTS){
           waypoint_index = 0;
 //          start_test = false;
         }
+        ROS_INFO("Navigation to Waypoint %d", waypoint_index);
         target_waypoint = waypoint_list[waypoint_index];
       }
     }
